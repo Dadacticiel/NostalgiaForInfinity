@@ -1,0 +1,324 @@
+//@version=5
+strategy("EMADadaV2 Strategy 4H", shorttitle="EMADadaV2 4H", overlay=true)
+
+//---------------------------------------------------------------------------------------------------------------------}
+//Tooltips
+//---------------------------------------------------------------------------------------------------------------------{
+hammer_tt      = "The Hammer pattern appears at the bottom of a downtrend. It is identified by a small upper wick (or no upper wick) with a small body, and an elongated lower wick whose length is 2X greater than the candle body’s width."
+ihammer_tt     = "The Inverted Hammer pattern appears at the bottom of a downtrend. It is identified by a small lower wick (or no lower wick) with a small body, and an elongated upper wick whose length is 2X greater than the candle body’s width."
+hman_tt        = "The Hanging Man pattern appears at the top of an uptrend. It is identified by a small upper wick (or no upper wick) with a small body, and an elongated lower wick whose length is 2X greater than the candle body’s width."
+sstar_tt       = "The Shooting Star pattern appears at the top of an uptrend. It is identified by a small lower wick (or no lower wick) with a small body, and an elongated upper wick whose length is 2X greater than the candle body’s width."
+bulle_tt       = "The Bullish Engulfing pattern appears at the bottom of a downtrend. It is a 2 bar pattern, identified by a large bullish candle body fully encapsulating (opening lower and closing higher) the previous small (bearish) candle body."
+beare_tt       = "The Bearish Engulfing pattern appears at the top of a downtrend. It is a 2 bar pattern, identified by a large bearish candle body fully encapsulating (opening higher and closing lower) the previous small (bullish) candle body."
+r3_tt          = "The Rising Three Method Pattern is an indicator of continuation for the current trend. It is a 5 bar pattern, identified by an initial full-bodied bullish candle, followed by 3 bearish candles that trade within the high and low of the initial candle, followed by another full-bodied bullish candle closing above the high of the initial candle."
+f3_tt          = "The Falling Three Method Pattern is an indicator of continuation for the current trend. It is a 5 bar pattern, identified by an initial full-bodied bearish candle, followed by 3 bullish candles that trade within the high and low of the initial candle, followed by another full-bodied bearish candle closing below the low of the initial candle."
+tws_tt         = "The Three White Soldiers Pattern appears at the bottom of a downtrend. It is identified by 3 full-bodied bullish candles, each opening within the body and closing below the high, of the previous candle."
+tbc_tt         = "The Three Black Crows Pattern appears at the top of an uptrend. It is identified by 3 full-bodied bearish candles, each open within the body and closing below the low, of the previous candle."
+mstar_tt       = "The Morning Star Pattern appears at the bottom of a downtrend. It is a 3 bar pattern, identified by a full-bodied bearish candle, followed by a small-bodied bearish candle, followed by a full-bodied bullish candle that closes above the halfway point of the first candle."
+estar_tt       = "The Evening Star Pattern appears at the top of an uptrend. It is a 3 bar pattern, identified by a full-bodied bullish candle, followed by a small-bodied bullish candle, followed by a full-bodied bearish candle that closes below the halfway point of the first candle."
+bullh_tt       = "The Bullish Harami Pattern appears at the bottom of a downtrend. It is a 2 bar pattern, identified by an initial bearish candle, followed by a small bullish candle whose range is entirely contained within the body of the initial candle."
+bearh_tt       = "The Bearish Harami Pattern appears at the top of an uptrend. It is a 2 bar pattern, identified by an initial bullish candle, followed by a small bearish candle whose range is entirely contained within the body of the initial candle."
+tweezer_top_tt = "The Tweezer Top bearish reversal candlestick pattern is identified by an initial bullish candle, followed by a bearish candle, both having equal highs."
+tweezer_btm_tt = "The Tweezer Bottom bullish reversal candlestick pattern is identified by an initial bearish candle, followed by a bullish candle, both having equal lows."
+
+//---------------------------------------------------------------------------------------------------------------------}
+//User Inputs
+//---------------------------------------------------------------------------------------------------------------------{
+
+group1 = "    Bullish Patterns               Bearish Patterns"
+
+//Bullish
+hammerTog   = input.bool(true, "Hammer                ", group = group1, inline = "1")
+ihammerTog  = input.bool(true, "Inverted Hammer   ", group = group1, inline = "2")
+bulleTog    = input.bool(true, "Bullish Engulfing    ", group = group1, inline = "3")
+r3Tog       = input.bool(true, "Rising 3                  ", group = group1, inline = "4")
+twsTog      = input.bool(true, "3 White Soldiers     ", group = group1, inline = "5")
+mstarTog    = input.bool(true, "Morning Star         ", group = group1, inline = "6")
+bullhTog    = input.bool(true, "Bullish Harami      ", group = group1, inline = "7")
+btmTweezTog = input.bool(true, "Tweezer Bottom    ", group = group1, inline = "8")
+
+//Bearish
+hmanTog     = input.bool(true, "Hanging Man", group = group1, inline = "1")
+sstarTog    = input.bool(true, "Shooting Star", group = group1, inline = "2")
+beareTog    = input.bool(true, "Bearish Engulfing", group = group1, inline = "3")
+f3Tog       = input.bool(true, "Falling 3", group = group1, inline = "4")
+tbcTog      = input.bool(true, "3 Black Crows", group = group1, inline = "5")
+estarTog    = input.bool(true, "Evening Star", group = group1, inline = "6")
+bearhTog    = input.bool(true, "Bearish Harami", group = group1, inline = "7")
+topTweezTog = input.bool(true, "Tweezer Top", group = group1, inline = "8")
+
+//Trend
+length = input.int(14, 'Trend Length', minval = 2, group = 'Reversal Detection')
+threshold = input.float(80, 'Threshold', minval = 0, maxval = 100, group = 'Reversal Detection')
+smooth = input.float(20, 'Warmup Length', minval = 1, group = 'Reversal Detection')
+
+//Style
+bcTog = input.bool(true, title = "Color Candles", group = "Style", tooltip = "Color Candles to visualize minor trend.")
+bullColor = input.color(#089981, title = "Bull Color  ", group = "Style")
+bearColor = input.color(#f23645, title = "Bear Color", group = "Style")
+useGradient = input.bool(true, title = "Use Gradient", group = "Style")
+txtSize = input.string("huge", title = "Label Size", options = ["tiny","small","normal","large","huge","auto"], group = "Style", inline = "3")
+
+//Dashboard
+showDash = input.bool(false, 'Show Dashboard', group = 'Dashboard')
+dashLoc  = input.string('Bottom Right' , 'Location'  , options = ['Top Right', 'Bottom Right', 'Bottom Left'] , group = 'Dashboard')
+textSize = str.lower( input.string('Tiny', 'Size', options = ['Tiny', 'Small', 'Normal'], group = 'Dashboard') )
+
+//---------------------------------------------------------------------------------------------------------------------}
+//Functions
+//---------------------------------------------------------------------------------------------------------------------{
+count(condition, filter)=>
+    var reversals = 0
+    var total = 0
+
+    reversals += condition and filter ? 1 : 0 
+    total += condition ? 1 : 0 
+
+    [condition and filter, reversals / total * 100, total]
+
+//---------------------------------------------------------------------------------------------------------------------}
+//Trend Detection
+//---------------------------------------------------------------------------------------------------------------------{
+var smooth_k = 0.
+var alpha = 2./(smooth+1)
+
+k = ta.stoch(close, close, close, length)
+
+alpha := 2/(smooth+1)
+smooth_k := k > 50 ? smooth_k + nz(100 - smooth_k) * alpha : k < 50 ? smooth_k + nz(0 - smooth_k) * alpha : nz(k)
+
+// label.new(bar_index, high, text=str.tostring(alpha), style=label.style_label_down, color=color.blue, size=size.normal, textcolor=color.white)
+
+
+is_bullish = k >= threshold and smooth_k >= threshold 
+is_bearish = k <= 100 - threshold and smooth_k <= 100 - threshold
+
+// Plotting long signals on the chart
+// plotshape(series=is_bullish, title="Bullish", location=location.belowbar, color=color.green, style=shape.labelup, text="BULL")
+// plotshape(series=is_bearish, title="Bearish", location=location.abovebar, color=color.red, style=shape.labeldown, text="BEAR")
+
+
+//---------------------------------------------------------------------------------------------------------------------}
+//Candestick Patterns
+//---------------------------------------------------------------------------------------------------------------------{
+rc = close < open // Red Candle
+gc = close > open // Green Candle
+
+//Candle measurements
+c_top = math.max(open,close) //Top of candle
+c_bot = math.min(open,close) //Bottom of candle
+
+hl_width = high - low //Total candle width (wick to wick)
+bod_width = (c_top - c_bot) //Width of candle body (open to close)
+hw_per = ((high - c_top) / hl_width) * 100 //Percent of total candle width that is occupied by the upper wick
+lw_per = ((c_bot - low) / hl_width) * 100 //Percent of total candle width that is occupied by the lower wick
+b_per = (bod_width / hl_width) * 100 //Percent of total candle width that is occupied by the candle body
+
+// label.new(bar_index, high, text=str.tostring(c_top), style=label.style_label_down, color=color.blue, size=size.normal, textcolor=color.white)
+
+doji = math.round_to_mintick(close) == math.round_to_mintick(open)
+
+//Bullish patterns
+hammer = is_bearish and (lw_per > (b_per*2) and b_per < 50 and hw_per < 2 and not doji)
+inv_hammer = is_bearish and (hw_per > (b_per*2) and b_per < 50 and lw_per < 2 and not doji)
+rising_3 = is_bearish[4] and (gc[4] and b_per[4] > 50)
+  and (rc[3] and c_top[3] <= high[4] and c_bot[3] >= low[4]) 
+  and (rc[2] and c_top[2] <= high[4] and c_bot[2] >= low[4]) 
+  and (rc[1] and c_top[1] <= high[4] and c_bot[1] >= low[4])
+  and (gc and close > high[4] and b_per > 50)
+bull_engulfing = is_bearish[1] and (rc[1] and gc and (bod_width > (bod_width[1]/2)) and (open < close[1]) and c_top > c_top[1] and (not rising_3) and (not doji[1]))
+soldiers = is_bearish[3] and ((gc[2] and b_per[2]>70)
+  and (gc[1] and b_per[1]>70 and c_bot[1] >= c_bot[2] and c_bot[1] <= c_top[2] and close[1] > high[2])
+  and (gc and b_per>70 and c_bot >= c_bot[1] and c_bot <= c_top[1] and close > high[1]))
+m_star = is_bearish and ((rc[2] and b_per[2] > 80) 
+  and (rc[1] and bod_width[1] < (bod_width[2]/2) and open[1] < close[2]) 
+  and (gc and close > hl2[2]))
+bull_harami = is_bearish and (gc and (high <= c_top[1] and low >= c_bot[1]) and rc[1])
+tweezer_btm = is_bearish[1] and (math.round_to_mintick(low) - math.round_to_mintick(low[1]) == 0 and gc and rc[1])
+
+// plotshape(series=hammer, title="Smooth k", location=location.belowbar, color=color.green, style=shape.labelup, text="HAMMER")
+
+// Bearish patterns
+// [s_star, s_star_per, s_star_count] = count(
+//   (hw_per > (b_per*2) and b_per < 50 and lw_per < 2 and not doji),
+//   is_bullish)
+s_star = is_bullish and (hw_per > 65 and b_per < 50 and lw_per < 10 and not doji) and gc[1] and gc[2] and gc[3]
+
+// [h_man, h_man_per, h_man_count] = count(
+//   (lw_per > (b_per*2) and b_per < 50 and hw_per < 2 and not doji),
+//   is_bullish)
+h_man = (lw_per > (b_per*2) and b_per < 50 and hw_per < 2 and not doji)
+
+// [falling_3, falling_3_per, falling_3_count] = count(
+//   (rc[4] and b_per[4] > 50) 
+//   and (gc[3] and c_top[3] <= high[4] and c_bot[3] >= low[4]) 
+//   and (gc[2] and c_top[2] <= high[4] and c_bot[2] >= low[4]) 
+//   and (gc[1] and c_top[1] <= high[4] and c_bot[1] >= low[4]) 
+//   and (rc and close < low[4] and b_per > 50),
+//   is_bullish[4])
+falling_3 = (rc[4] and b_per[4] > 50) 
+  and (gc[3] and c_top[3] <= high[4] and c_bot[3] >= low[4]) 
+  and (gc[2] and c_top[2] <= high[4] and c_bot[2] >= low[4]) 
+  and (gc[1] and c_top[1] <= high[4] and c_bot[1] >= low[4]) 
+  and (rc and close < low[4] and b_per > 50)
+
+// [bear_engulfing, bear_engulfing_per, bear_engulfing_count] = count(
+//   gc[1] and rc and (bod_width > (bod_width[1]/2)) and (open > close[1]) and c_bot < c_bot[1] and (not falling_3) and (not doji[1]),
+//   is_bullish[1])
+bear_engulfing = is_bullish[1] and gc[1] and rc and (bod_width > (bod_width[1]/2)) and (open > close[1]) and c_bot < c_bot[1] and (not falling_3) and (not doji[1])
+
+// [crows, crows_per, crows_count] = count(
+//   (rc[2] and b_per[2]>70)
+//   and (rc[1] and b_per[1]>70 and c_top[1] <= c_top[2] and c_top[1] >= c_bot[2] and close[1] < low[2])
+//   and (rc and b_per>70 and c_top <= c_top[1] and c_top >= c_bot[1] and close < low[1]),
+//   is_bullish[3])
+crows = (rc[2] and b_per[2]>70)
+  and (rc[1] and b_per[1]>70 and c_top[1] <= c_top[2] and c_top[1] >= c_bot[2] and close[1] < low[2])
+  and (rc and b_per>70 and c_top <= c_top[1] and c_top >= c_bot[1] and close < low[1])
+
+// [e_star, e_star_per, e_star_count] = count(
+//   (gc[2] and b_per[2] > 80) 
+//   and (gc[1] and bod_width[1] < (bod_width[2]/2) and open[1] > close[2]) 
+//   and (rc and close < hl2[2]),
+//   is_bullish)
+e_star = is_bullish and (gc[2] and b_per[2] > 80) 
+  and (gc[1] and bod_width[1] < (bod_width[2]/2) and open[1] > close[2]) 
+  and (rc and close < hl2[2])
+
+// [bear_harami, bear_harami_per, bear_harami_count] = count(
+//   rc and (high <= c_top[1] and low >= c_bot[1]) and gc[1],
+//   is_bullish)
+bear_harami = is_bullish and rc and (high <= c_top[1] and low >= c_bot[1]) and gc[1]
+
+// [tweezer_top, tweezer_top_per, tweezer_top_count] = count(
+//   math.round_to_mintick(high) - math.round_to_mintick(high[1]) == 0 and rc and gc[1],
+//   is_bullish[1])
+tweezer_top = is_bullish[1] and math.round_to_mintick(high) - math.round_to_mintick(high[1]) == 0 and rc and gc[1]
+
+dada_pattern = is_bearish[1] and b_per[2] < 20 and bod_width > (bod_width[1]) and b_per[1] > 69 and gc and rc[1] and rc[2] and rc[3] and (bod_width / close > 0.05)
+// plotshape(series=dada_pattern, title="Dada Pattern", location=location.belowbar, color=color.green, style=shape.labelup, text="DP")
+
+//---------------------------------------------------------------------------------------------------------------------}
+//Labels
+//---------------------------------------------------------------------------------------------------------------------{
+//Bullish patterns
+if hammer and hammerTog
+    label.new(bar_index,low,"H", color = color(na), style = label.style_label_up, textcolor = bullColor, size = txtSize, tooltip = hammer_tt)
+
+if inv_hammer and ihammerTog
+    label.new(bar_index,low,"IH", color = color(na), style = label.style_label_up, textcolor = bullColor, size = txtSize, tooltip = ihammer_tt)
+
+if s_star and sstarTog
+    label.new(bar_index,high,"SS", color = color(na), style = label.style_label_down, textcolor = bearColor, size = txtSize, tooltip = sstar_tt)
+
+if h_man and hmanTog
+    label.new(bar_index,high,"HM", color = color(na), style = label.style_label_down, textcolor = bearColor, size = txtSize, tooltip = hman_tt)
+
+if rising_3 and r3Tog
+    label.new(bar_index,low,"R3", color = color(na), style = label.style_label_up, textcolor = bullColor, size = txtSize, tooltip = r3_tt)
+
+if falling_3 and f3Tog
+    label.new(bar_index,high,"F3", color = color(na), style = label.style_label_down, textcolor = bearColor, size = txtSize, tooltip = f3_tt)
+
+if bull_engulfing and bulleTog
+    label.new(bar_index,low,"EG▲", color = color(na), style = label.style_label_up, textcolor = bullColor, size = txtSize, tooltip = bulle_tt)
+
+if tweezer_btm and btmTweezTog
+    label.new(bar_index,low,"TB", color = color(na), style = label.style_label_up, textcolor = bullColor, size = txtSize, tooltip = tweezer_btm_tt)
+
+//Bearish patterns
+if bear_engulfing and beareTog
+    label.new(bar_index,high,"EG▼", color = color(na), style = label.style_label_down, textcolor = bearColor, size = txtSize, tooltip = beare_tt)
+
+if soldiers and twsTog
+    label.new(bar_index,low,"3WS", color = color(na), style = label.style_label_up, textcolor = bullColor, size = txtSize, tooltip = tws_tt)
+
+if crows and tbcTog
+    label.new(bar_index,high,"3BC", color = color(na), style = label.style_label_down, textcolor = bearColor, size = txtSize, tooltip = tbc_tt)
+
+if m_star and mstarTog
+    label.new(bar_index,low,"MS", color = color(na), style = label.style_label_up, textcolor = bullColor, size = txtSize, tooltip = mstar_tt)
+
+if e_star and estarTog
+    label.new(bar_index,high,"ES", color = color(na), style = label.style_label_down, textcolor = bearColor, size = txtSize, tooltip = estar_tt)
+
+if bull_harami and bullhTog
+    label.new(bar_index,low,"H▲", color = color(na), style = label.style_label_up, textcolor = bullColor, size = txtSize, tooltip = bullh_tt)
+
+if bear_harami and bearhTog
+    label.new(bar_index,high,"H▼", color = color(na), style = label.style_label_down, textcolor = bearColor, size = txtSize, tooltip = bearh_tt)
+
+if tweezer_top and topTweezTog
+    label.new(bar_index,high,"TT", color = color(na), style = label.style_label_down, textcolor = bearColor, size = txtSize, tooltip = tweezer_top_tt)
+
+if dada_pattern
+    label.new(bar_index,high,"DP", color = color(na), style = label.style_label_up, textcolor = bullColor, size = txtSize, tooltip = 'Dada pattern')
+
+//---------------------------------------------------------------------------------------------------------------------}
+//Candle Coloring
+//---------------------------------------------------------------------------------------------------------------------{
+var color css = na
+
+if bcTog
+    if useGradient
+        css := switch
+            is_bullish => color.from_gradient(smooth_k, threshold, 100, color.new(bearColor, 80), bearColor)
+            is_bearish => color.from_gradient(smooth_k, 0, 100 - threshold, bullColor, color.new(bullColor, 80))
+            => na
+    else
+        css := is_bullish ? bearColor : is_bearish ? bullColor : na
+
+barcolor(css, title = 'Candle Coloring')
+
+//---------------------------------------------------------------------------------------------------------------------}
+
+// Input parameters for EMA lengths
+buy_ema_1_len = input.int(15, title="Buy EMA 1 Length")
+buy_ema_2_len = input.int(20, title="Buy EMA 2 Length")
+buy_ema_3_len = input.int(30, title="Buy EMA 3 Length")
+
+// Calculate EMAs
+buy_ema_1 = ta.ema(close, buy_ema_1_len)
+buy_ema_1_adjusted = ta.ema(close + ((high - close) - ((close - low)*2)), buy_ema_1_len)
+buy_ema_2 = ta.ema(close, buy_ema_2_len)
+buy_ema_2_low = ta.ema(low, buy_ema_2_len)
+buy_ema_3 = ta.ema(low, buy_ema_3_len)
+
+max_ema = buy_ema_1 > buy_ema_2 ? buy_ema_1 : buy_ema_2
+percent_between_ema = (buy_ema_1 > buy_ema_2 ? buy_ema_1 / buy_ema_2 - 1 : buy_ema_2 / buy_ema_1 - 1) * 100
+
+// Plot EMAs
+plot(buy_ema_1, color=color.blue, title="Buy EMA 1")
+plot(buy_ema_1_adjusted, color=#21f32f, title="Buy EMA 1 adjusted")
+plot(buy_ema_2, color=color.orange, title="Buy EMA 2")
+plot(buy_ema_3, color=#ff0000, title="Buy EMA 3")
+plot(buy_ema_2_low, color=color.rgb(166, 0, 255), title="Buy EMA 2 low")
+
+going_up = (buy_ema_1[5] < buy_ema_1) and (buy_ema_2[5] < buy_ema_2) and ((buy_ema_1 / buy_ema_1[5] - 1) > 0.0008)
+close_superior_to_previous_high = high[6] > close
+wait_for_bounce = close > open and ((close - open) > ((high[1] - low[1]) * 2.5)) or (gc[1] and bod_width / close > 0.02 and rc)
+dada_back_on_track = is_bearish[1] and is_bearish[2] and is_bearish[3] and rc[1] and rc[2] and rc[3] and gc and (bod_width > (bod_width[1] + bod_width[2])) and (low[1] < low or low[2] < low) and (bod_width[3] > bod_width[2] + bod_width[1])
+
+// Get the ticker symbol
+tickerName = syminfo.ticker
+
+// Entry conditions
+// Only works for BTC
+candle_bullish_pattern = (tickerName != 'PEPEUSDT' and tickerName != 'SOLUSDT') and (is_bullish or bull_engulfing or hammer or inv_hammer or rising_3 or soldiers or m_star or bull_harami or tweezer_btm)
+dada_price = tickerName != 'PEPEUSDT' and (close_superior_to_previous_high and going_up)
+all_down = buy_ema_1[1] > buy_ema_1 and buy_ema_2[1] > buy_ema_2 and buy_ema_1[2] > buy_ema_1[1] and buy_ema_2[2] > buy_ema_2[1] and buy_ema_1[3] > buy_ema_1[2] and buy_ema_2[3] > buy_ema_2[2] and buy_ema_1[4] > buy_ema_1[3] and buy_ema_2[4] > buy_ema_2[3] and buy_ema_1[5] > buy_ema_1[4] and buy_ema_2[5] > buy_ema_2[4] and buy_ema_1[10] > buy_ema_1 and buy_ema_2[10] > buy_ema_2 and buy_ema_1[6] > buy_ema_1[5] and buy_ema_2[6] > buy_ema_2[5] and buy_ema_1[7] > buy_ema_1[6] and buy_ema_2[7] > buy_ema_2[6] and (going_up[1] or going_up[2] or going_up[3] or going_up[4] or going_up[5] or (tickerName == 'BTCUSDT' and candle_bullish_pattern[14]))
+
+enter_long = strategy.opentrades == 0 and (ta.crossover(buy_ema_1_adjusted, buy_ema_2) or dada_price or dada_pattern or candle_bullish_pattern or dada_back_on_track) and wait_for_bounce == false and all_down == false
+
+// Exit conditions
+// Only works for BTC
+bearish_pattern = tickerName == 'BTCUSDT' and false and (crows or s_star or falling_3 or h_man)
+exit_long = strategy.opentrades > 0 and (ta.crossover(buy_ema_2, buy_ema_1_adjusted) or bearish_pattern or all_down)
+
+// // Plotting long signals on the chart
+plotshape(series=enter_long, title="Long Entry", location=location.belowbar, color=color.green, style=shape.labelup, text="BUY")
+plotshape(series=exit_long, title="Long Exit", location=location.abovebar, color=color.red, style=shape.labeldown, text="SELL")
+
+// Strategy execution (optional, can be removed if only visual signals are needed)
+strategy.entry("Long", strategy.long, when=enter_long)
+strategy.close("Long", when=exit_long)

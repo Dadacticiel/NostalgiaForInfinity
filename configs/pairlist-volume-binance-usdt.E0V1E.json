@@ -1,0 +1,18 @@
+{
+  "pairlists": [
+    {
+      "method": "VolumePairList",
+      "number_assets": 85,
+      "sort_key": "quoteVolume",
+      "refresh_period": 3600
+    },
+    {
+      "method": "ShuffleFilter"
+    },
+    {
+      "method": "VolumePairList",
+      "number_assets": 75,
+      "sort_key": "quoteVolume"
+    }
+  ]
+}

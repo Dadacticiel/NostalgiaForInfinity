@@ -1,0 +1,33 @@
+{
+  "strategy_name": "EMADadaV2",
+  "params": {
+    "roi": {},
+    "trailing": {
+      "trailing_stop": false,
+      "trailing_stop_positive": null,
+      "trailing_stop_positive_offset": 0.0,
+      "trailing_only_offset_is_reached": false
+    },
+    "buy": {
+      "window": 24,
+      "buy_candle_length": 6,
+      "buy_candle_smooth": 39,
+      "buy_ema_1_len": 13,
+      "buy_ema_2_len": 45,
+      "rsi_entry_long": 93
+    },
+    "sell": {
+      "rsi_exit_long": 80,
+      "sell_candle_threshold": 85
+    },
+    "protection": {},
+    "stoploss": {
+      "stoploss": -0.347
+    },
+    "max_open_trades": {
+      "max_open_trades": 7
+    }
+  },
+  "ft_stratparam_v": 1,
+  "export_time": "2024-08-31 20:59:47.664984+00:00"
+}
